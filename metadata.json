@@ -1,0 +1,6 @@
+{
+  "name": "GiroFlow - Sistema de Conta-Giro de Catracas",
+  "description": "Sistema para registro com câmera do celular e manual de conta-giro das 14 catracas separadas por refeitório com cálculo automático e exportação em Excel e PDF.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
