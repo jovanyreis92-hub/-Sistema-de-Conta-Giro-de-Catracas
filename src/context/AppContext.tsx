@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   User, 
+  UserRole,
   Turnstile, 
   TurnstileRecord, 
   AuditLog, 
@@ -38,6 +39,18 @@ interface AppContextType {
   login: (email: string, pass: string) => boolean;
   logout: () => void;
   switchUser: (userId: string) => void;
+  registerUser: (userData: {
+    name: string;
+    email: string;
+    password?: string;
+    role: UserRole;
+    employeeId?: string;
+    department?: string;
+    activeShift?: string;
+    avatar?: string;
+  }) => User;
+  deleteUser: (userId: string) => void;
+  clearPreviousUsers: () => void;
   toggleSimulation: () => void;
   toggleSound: () => void;
   updateTurnstileStatus: (id: string, status: TurnstileStatus, reason?: string) => void;
@@ -67,8 +80,45 @@ const CATEGORY_LABELS: Record<PassCategory, string> = {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [users] = useState<User[]>(INITIAL_USERS);
-  const [currentUser, setCurrentUser] = useState<User | null>(INITIAL_USERS[0]); // Default admin/supervisor
+  const [users, setUsers] = useState<User[]>(() => {
+    try {
+      // Purge previous mock users if old demo IDs exist or on initial migration
+      const isCleared = localStorage.getItem('giroflow_users_cleared_v3');
+      if (!isCleared) {
+        localStorage.setItem('giroflow_users_cleared_v3', 'true');
+        localStorage.removeItem('giroflow_users');
+        localStorage.removeItem('giroflow_current_user_id');
+        return [];
+      }
+      const saved = localStorage.getItem('giroflow_users');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return INITIAL_USERS;
+  });
+
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const savedId = localStorage.getItem('giroflow_current_user_id');
+      const savedUsers = localStorage.getItem('giroflow_users');
+      if (savedUsers) {
+        const parsed = JSON.parse(savedUsers);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (savedId) {
+            const found = parsed.find((u: User) => u.id === savedId);
+            if (found) return found;
+          }
+          return parsed[0];
+        }
+      }
+    } catch {}
+    return null;
+  });
+
   const [turnstiles, setTurnstiles] = useState<Turnstile[]>(() => {
     const saved = localStorage.getItem('giroflow_turnstiles');
     if (saved) {
@@ -97,6 +147,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [hourlyFlow, setHourlyFlow] = useState<HourlyFlow[]>(INITIAL_HOURLY_FLOW);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+
+  // Sync users to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('giroflow_users', JSON.stringify(users));
+      if (currentUser) {
+        localStorage.setItem('giroflow_current_user_id', currentUser.id);
+      } else {
+        localStorage.removeItem('giroflow_current_user_id');
+      }
+    } catch {}
+  }, [users, currentUser]);
 
   // Sync turnstile & records changes to localStorage
   useEffect(() => {
@@ -152,28 +214,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuditLogs(prev => [newLog, ...prev]);
   }, [currentUser]);
 
+  const ROLE_LABELS: Record<UserRole, string> = {
+    admin: 'Administrador de Sistema',
+    supervisor: 'Supervisor de Estação',
+    operator: 'Operador de Catraca',
+    auditor: 'Auditor de Receita & Fluxo'
+  };
+
   const login = useCallback((email: string, pass: string): boolean => {
-    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (found && pass.length >= 4) {
-      setCurrentUser(found);
-      addAuditLog(
-        'LOGIN_SUCCESS',
-        'Login Efetuado',
-        `Usuário ${found.name} (${found.roleLabel}) acessou o sistema com sucesso.`,
-        'info',
-        { email: found.email, employeeId: found.employeeId }
-      );
-      return true;
-    } else {
+    const cleanEmail = email.trim().toLowerCase();
+    const found = users.find(u => u.email.trim().toLowerCase() === cleanEmail);
+    if (!found) {
       addAuditLog(
         'LOGIN_FAILED',
         'Falha de Autenticação',
-        `Tentativa inválida de login com o e-mail: ${email}.`,
+        `Tentativa de login com e-mail não cadastrado: ${email}.`,
         'critical',
         { attemptedEmail: email }
       );
       return false;
     }
+
+    // Valida senha cadastrada (se houver) ou comprimento mínimo de 3 caracteres
+    const isPassValid = found.password ? found.password === pass : pass.length >= 3;
+    if (!isPassValid) {
+      addAuditLog(
+        'LOGIN_FAILED',
+        'Senha Incorreta',
+        `Senha incorreta informada para o usuário ${found.name} (${found.email}).`,
+        'critical',
+        { attemptedEmail: email }
+      );
+      return false;
+    }
+
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const nowStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    
+    const updatedUser: User = { ...found, lastLogin: nowStr };
+    setCurrentUser(updatedUser);
+    setUsers(prev => prev.map(u => u.id === found.id ? updatedUser : u));
+
+    addAuditLog(
+      'LOGIN_SUCCESS',
+      'Login Efetuado',
+      `Usuário ${found.name} (${found.roleLabel}) acessou o sistema com sucesso.`,
+      'info',
+      { email: found.email, employeeId: found.employeeId }
+    );
+    return true;
   }, [users, addAuditLog]);
 
   const logout = useCallback(() => {
@@ -200,6 +290,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         { userId: user.id, role: user.role }
       );
     }
+  }, [users, addAuditLog]);
+
+  const registerUser = useCallback((userData: {
+    name: string;
+    email: string;
+    password?: string;
+    role: UserRole;
+    employeeId?: string;
+    department?: string;
+    activeShift?: string;
+    avatar?: string;
+  }): User => {
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const nowStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const id = `USR-${Date.now().toString().slice(-4)}${Math.floor(10 + Math.random() * 90)}`;
+    
+    const avatar = userData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=0891b2&color=fff&bold=true`;
+    
+    const newUser: User = {
+      id,
+      name: userData.name.trim(),
+      email: userData.email.trim().toLowerCase(),
+      role: userData.role,
+      roleLabel: ROLE_LABELS[userData.role] || 'Operador de Catraca',
+      avatar,
+      employeeId: userData.employeeId?.trim() || `MAT-${Math.floor(1000 + Math.random() * 9000)}`,
+      department: userData.department?.trim() || 'Operações de Acesso / Refeitório',
+      activeShift: userData.activeShift?.trim() || 'Geral',
+      lastLogin: nowStr,
+      password: userData.password || ''
+    };
+
+    setUsers(prev => [...prev, newUser]);
+    setCurrentUser(newUser);
+
+    addAuditLog(
+      'USER_CREATE',
+      'Novo Login Cadastrado',
+      `Novo login cadastrado no sistema: ${newUser.name} (${newUser.email}) com perfil ${newUser.roleLabel}.`,
+      'info',
+      { userId: newUser.id, role: newUser.role, employeeId: newUser.employeeId }
+    );
+
+    return newUser;
+  }, [addAuditLog]);
+
+  const deleteUser = useCallback((userId: string) => {
+    const target = users.find(u => u.id === userId);
+    setUsers(prev => prev.filter(u => u.id !== userId));
+
+    if (currentUser?.id === userId) {
+      const remaining = users.filter(u => u.id !== userId);
+      setCurrentUser(remaining.length > 0 ? remaining[0] : null);
+    }
+
+    if (target) {
+      addAuditLog(
+        'USER_DELETE',
+        'Login Removido',
+        `O login ${target.name} (${target.email}) foi removido do sistema.`,
+        'warning',
+        { userId: target.id, email: target.email }
+      );
+    }
+  }, [users, currentUser, addAuditLog]);
+
+  const clearPreviousUsers = useCallback(() => {
+    const count = users.length;
+    setUsers([]);
+    setCurrentUser(null);
+    localStorage.removeItem('giroflow_current_user_id');
+    localStorage.setItem('giroflow_users', JSON.stringify([]));
+
+    addAuditLog(
+      'USER_DELETE',
+      'Logins Anteriores Removidos',
+      `Todos os ${count} logins e usuários anteriores foram removidos do sistema.`,
+      'warning'
+    );
   }, [users, addAuditLog]);
 
   const toggleSound = useCallback(() => {
@@ -510,6 +680,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       login,
       logout,
       switchUser,
+      registerUser,
+      deleteUser,
+      clearPreviousUsers,
       toggleSimulation,
       toggleSound,
       updateTurnstileStatus,

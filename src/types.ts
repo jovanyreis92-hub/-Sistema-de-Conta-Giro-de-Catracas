@@ -11,6 +11,7 @@ export interface User {
   department: string;
   activeShift?: string;
   lastLogin: string;
+  password?: string;
 }
 
 export type TurnstileDirection = 'entry' | 'exit' | 'bidirectional';
@@ -93,6 +94,9 @@ export type AuditAction =
   | 'LOGIN_SUCCESS'
   | 'LOGIN_FAILED'
   | 'LOGOUT'
+  | 'USER_CREATE'
+  | 'USER_DELETE'
+  | 'USER_UPDATE'
   | 'RECORD_CREATE'
   | 'RECORD_UPDATE'
   | 'RECORD_APPROVE'

@@ -7,6 +7,8 @@ import {
   Play, 
   Pause, 
   User as UserIcon, 
+  UserPlus,
+  Users as UsersIcon,
   LogOut, 
   ChevronDown, 
   Layers, 
@@ -20,7 +22,7 @@ import { useApp } from '../context/AppContext';
 interface HeaderProps {
   activeTab: 'refectory' | 'dashboard' | 'records';
   setActiveTab: (tab: 'refectory' | 'dashboard' | 'records') => void;
-  onOpenLoginModal: () => void;
+  onOpenLoginModal: (mode?: 'login' | 'register' | 'manage') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -182,34 +184,65 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                     </div>
 
-                    {/* Quick profile switch */}
-                    <div className="py-2">
-                      <p className="px-3 text-[10px] uppercase font-semibold text-slate-400 tracking-wider mb-1">
-                        Alternar Perfil para Teste:
-                      </p>
-                      {users.map(u => (
-                        <button
-                          key={u.id}
-                          onClick={() => {
-                            switchUser(u.id);
-                            setShowUserMenu(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-left transition-colors ${
-                            currentUser.id === u.id 
-                              ? 'bg-cyan-950/60 text-cyan-300 border border-cyan-800/40' 
-                              : 'text-slate-300 hover:bg-slate-800'
-                          }`}
-                        >
-                          <div>
-                            <p className="font-medium">{u.name}</p>
-                            <p className="text-[10px] text-slate-400">{u.roleLabel}</p>
-                          </div>
-                          {currentUser.id === u.id && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                          )}
-                        </button>
-                      ))}
+                    {/* User Management Actions */}
+                    <div className="py-1.5 border-b border-slate-800 space-y-1">
+                      <button
+                        id="header-btn-register-user"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onOpenLoginModal('register');
+                        }}
+                        className="w-full flex items-center space-x-2 px-3 py-1.5 rounded-lg text-emerald-400 hover:bg-emerald-950/40 transition-colors text-left font-medium"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>Cadastrar Novo Login</span>
+                      </button>
+
+                      <button
+                        id="header-btn-manage-users"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onOpenLoginModal('manage');
+                        }}
+                        className="w-full flex items-center space-x-2 px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 transition-colors text-left"
+                      >
+                        <UsersIcon className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Gerenciar Logins ({users.length})</span>
+                      </button>
                     </div>
+
+                    {/* Quick profile switch if multiple registered */}
+                    {users.length > 1 && (
+                      <div className="py-2">
+                        <p className="px-3 text-[10px] uppercase font-semibold text-slate-400 tracking-wider mb-1">
+                          Alternar Usuário:
+                        </p>
+                        <div className="max-h-36 overflow-y-auto space-y-0.5 pr-1">
+                          {users.map(u => (
+                            <button
+                              key={u.id}
+                              onClick={() => {
+                                switchUser(u.id);
+                                setShowUserMenu(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-left transition-colors ${
+                                currentUser.id === u.id 
+                                  ? 'bg-cyan-950/60 text-cyan-300 border border-cyan-800/40' 
+                                  : 'text-slate-300 hover:bg-slate-800'
+                              }`}
+                            >
+                              <div className="truncate mr-2">
+                                <p className="font-medium truncate">{u.name}</p>
+                                <p className="text-[10px] text-slate-400">{u.roleLabel}</p>
+                              </div>
+                              {currentUser.id === u.id && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0"></span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="border-t border-slate-800 pt-1">
                       <button
@@ -227,14 +260,28 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
               </div>
             ) : (
-              <button
-                id="header-login-btn"
-                onClick={onOpenLoginModal}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white shadow-sm transition-all"
-              >
-                <UserIcon className="w-3.5 h-3.5" />
-                <span>Entrar</span>
-              </button>
+              <div className="flex items-center space-x-1.5">
+                <button
+                  id="header-register-direct-btn"
+                  onClick={() => onOpenLoginModal('register')}
+                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all"
+                  title="Cadastrar novo usuário / login no sistema"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Cadastrar Login</span>
+                </button>
+
+                {users.length > 0 && (
+                  <button
+                    id="header-login-btn"
+                    onClick={() => onOpenLoginModal('login')}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-750 shadow-sm transition-all"
+                  >
+                    <UserIcon className="w-3.5 h-3.5" />
+                    <span>Entrar</span>
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

@@ -17,6 +17,7 @@ import { Turnstile } from './types';
 function MainLayout() {
   const [activeTab, setActiveTab] = useState<'refectory' | 'dashboard' | 'records'>('refectory');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginModalMode, setLoginModalMode] = useState<'login' | 'register' | 'manage'>('login');
   const [calibrationTurnstile, setCalibrationTurnstile] = useState<Turnstile | null>(null);
   const [preselectedTurnstileId, setPreselectedTurnstileId] = useState<string | undefined>(undefined);
 
@@ -36,7 +37,10 @@ function MainLayout() {
       <Header 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
-        onOpenLoginModal={() => setIsLoginModalOpen(true)}
+        onOpenLoginModal={(mode = 'login') => {
+          setLoginModalMode(mode);
+          setIsLoginModalOpen(true);
+        }}
       />
 
       {/* Main Content Area */}
@@ -103,6 +107,7 @@ function MainLayout() {
       <LoginModal 
         isOpen={isLoginModalOpen} 
         onClose={() => setIsLoginModalOpen(false)} 
+        initialMode={loginModalMode}
       />
 
       <TurnstileModal 

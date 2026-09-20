@@ -1,55 +1,6 @@
 import { User, Turnstile, TurnstileRecord, AuditLog, RotationEvent, HourlyFlow, RefectoryClosingRecord } from '../types';
 
-export const INITIAL_USERS: User[] = [
-  {
-    id: 'USR-01',
-    name: 'Carlos Mendes',
-    email: 'carlos.mendes@giroflow.com.br',
-    role: 'admin',
-    roleLabel: 'Administrador de Sistema',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&auto=format&fit=crop&q=80',
-    employeeId: 'MAT-8841',
-    department: 'Diretoria de Operações',
-    activeShift: 'Geral',
-    lastLogin: '2026-09-19 14:10:22',
-  },
-  {
-    id: 'USR-02',
-    name: 'Amanda Rocha',
-    email: 'amanda.rocha@giroflow.com.br',
-    role: 'supervisor',
-    roleLabel: 'Supervisora de Estação',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80',
-    employeeId: 'MAT-5412',
-    department: 'Fiscalização de Acesso',
-    activeShift: 'Tarde (14h - 22h)',
-    lastLogin: '2026-09-19 13:50:11',
-  },
-  {
-    id: 'USR-03',
-    name: 'Marcos Vinicius',
-    email: 'marcos.vinicius@giroflow.com.br',
-    role: 'operator',
-    roleLabel: 'Operador de Catraca',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
-    employeeId: 'MAT-2190',
-    department: 'Operações de Pista',
-    activeShift: 'Tarde (14h - 22h)',
-    lastLogin: '2026-09-19 13:58:45',
-  },
-  {
-    id: 'USR-04',
-    name: 'Juliana Paes',
-    email: 'juliana.paes@giroflow.com.br',
-    role: 'auditor',
-    roleLabel: 'Auditora de Receita & Fluxo',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
-    employeeId: 'MAT-9031',
-    department: 'Auditoria & Compliance',
-    activeShift: 'Comercial',
-    lastLogin: '2026-09-19 11:24:08',
-  }
-];
+export const INITIAL_USERS: User[] = [];
 
 export const INITIAL_TURNSTILES: Turnstile[] = Array.from({ length: 14 }, (_, i) => {
   const num = i + 1;
